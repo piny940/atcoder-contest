@@ -1,8 +1,8 @@
 read -p "Contest number: " num
 mkdir "abc${num}"
 cd "abc${num}"
-touch a.rb
-touch b.rb
-touch c.rb
-touch d.rb
-touch e.rb
+touch a.py
+touch b.py
+touch c.py
+touch d.py
+touch e.py
