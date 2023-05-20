@@ -16,11 +16,12 @@ searched = [False] * n
 
 
 def dfs(current):
-  searched[current] = True
   for adj in adjs[current]:
     if not searched[adj]:
+      searched[adj] = True
       dfs(adj)
 
 
+searched[0] = True
 dfs(0)
 print('The graph is connected.' if all(searched) else ' The graph is not connected.')
