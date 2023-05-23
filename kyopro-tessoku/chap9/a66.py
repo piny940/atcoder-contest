@@ -6,7 +6,7 @@ parents = [None] * n
 
 
 def get_root(node):
-  while parents[node]:
+  while parents[node] != None:
     node = parents[node]
   return node
 
