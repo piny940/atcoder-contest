@@ -68,7 +68,6 @@ def dfs(point, direction):
     return
 
   # nextが岩だった場合
-  debug()
   for direction in directions:
     next = one_next(point, direction)
     if to_proceed(point, direction):
