@@ -3,7 +3,6 @@ from enum import Enum
 from typing import Literal
 from itertools import combinations
 import abc
-import time
 
 
 class Suit(Enum):
@@ -277,13 +276,13 @@ class Cards:
 
   def hand(self) -> PokerHand:
     one_pair = self.__one_pair()
-    three_card = self.__three_card()
     straight = self.__straight()
     flush = self.__flush()
-    if not one_pair and not three_card and not flush and not straight:
+    if not one_pair and not flush and not straight:
       return HighCard(self.ranks())
     if straight and flush:
       return StraightFlush(straight.top)
+    three_card = self.__three_card()
     if three_card:
       return self.__four_card() or self.__full_house() or three_card
     return flush or straight or self.__two_pair() or one_pair
@@ -298,7 +297,7 @@ class Cards:
   # Determine the ranks of the pairs. ex: ['2', 'A']
   def __pairs(self) -> list[Rank]:
     counts = self.__counts()
-    pairs = [Rank[rank_name] for rank_name, count in counts.items() if count == 2]
+    pairs = [Rank[rank_name] for rank_name, count in counts.items() if count >= 2]
     return pairs
 
   # Determine the number of cards of a same rank. ex: ('2', 3)
@@ -347,13 +346,12 @@ class Cards:
     return None
 
   def __full_house(self) -> FullHouse | None:
-    three_card, count = self.__a_kind_count()
-    if count != 3:
+    three_card = self.__three_card()
+    if not three_card:
       return None
-    pairs = self.__pairs()
-    if len(pairs) != 1:
-      return None
-    return FullHouse(three_card, pairs[0])
+    if len(three_card.remains) == 2 and three_card.remains[0] == three_card.remains[1]:
+      return FullHouse(three_card.three_card, three_card.remains[0])
+    return None
 
   def __four_card(self) -> FourCard | None:
     four_card, count = self.__a_kind_count()
@@ -398,12 +396,13 @@ class Player:
     best_ways = []
     for to_change_len in range(0, changeable + 1):
       for to_change_idxs in combinations(range(self.original.size()), to_change_len):
-        rate = self.win_rate(others, list(to_change_idxs))
+        change_list = list(to_change_idxs)
+        rate = self.win_rate(others, change_list)
         if rate > max_win_rate:
           max_win_rate = rate
-          best_ways = [list(to_change_idxs)]
+          best_ways = [change_list]
         elif rate == max_win_rate:
-          best_ways.append(list(to_change_idxs))
+          best_ways.append(change_list)
     return max_win_rate, best_ways
 
   def __is_winner(self, current: Cards, others: list['Player']) -> bool:
@@ -423,7 +422,7 @@ def main(lines: list[str]):
     others.append(Player(cards))
   k = int(lines[PLAYER_COUNT])
   max_win_rate, best_ways = me.max_win_rate(others, k)
-  print(round(max_win_rate, 12))
+  print(max_win_rate)
   ways_str = []
   for way in best_ways:
     str_cards = lines[0].split(' ')
