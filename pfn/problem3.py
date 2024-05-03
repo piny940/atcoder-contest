@@ -2,19 +2,7 @@ import sys
 from enum import Enum
 from typing import Literal
 from itertools import combinations
-import time
-
-
-class PokerHand(Enum):
-  HIGH_CARD = 0
-  ONE_PAIR = 1
-  TWO_PAIR = 2
-  THREE_CARD = 3
-  STRAIGHT = 4
-  FLUSH = 5
-  FULL_HOUSE = 6
-  FOUR_CARD = 7
-  STRAIGHT_FLUSH = 8
+import abc
 
 
 class Suit(Enum):
@@ -99,6 +87,177 @@ class Card:
 ALL_CARDS = [Card(suit, rank) for suit in Suit for rank in Rank]
 
 
+class HandKind(Enum):
+  HIGH_CARD = 0
+  ONE_PAIR = 1
+  TWO_PAIR = 2
+  THREE_CARD = 3
+  STRAIGHT = 4
+  FLUSH = 5
+  FULL_HOUSE = 6
+  FOUR_CARD = 7
+  STRAIGHT_FLUSH = 8
+
+
+class PokerHand(metaclass=abc.ABCMeta):
+  def kind(self) -> HandKind:
+    pass
+
+  def stronger_than(self, other: 'PokerHand') -> bool:
+    pass
+
+
+class HighCard(PokerHand):
+  def __init__(self, ranks: list[Rank]):
+    self.ranks: list[Rank] = sorted(ranks, reverse=True)
+
+  def kind(self) -> HandKind:
+    return HandKind.HIGH_CARD
+
+  def stronger_than(self, other: 'PokerHand') -> bool:
+    if other.kind() != HandKind.HIGH_CARD:
+      return False
+    for i in range(len(self.ranks)):
+      if self.ranks[i] != other.ranks[i]:
+        return self.ranks[i] > other.ranks[i]
+    return False
+
+
+class OnePair(PokerHand):
+  def __init__(self, pair: Rank, remains: list[Rank]):
+    self.pair: Rank = pair
+    self.remains: list[Rank] = sorted(remains, reverse=True)
+
+  def kind(self) -> HandKind:
+    return HandKind.ONE_PAIR
+
+  def stronger_than(self, other: 'PokerHand') -> bool:
+    if other.kind() != HandKind.ONE_PAIR:
+      return self.kind().value > other.kind().value
+    if self.pair != other.pair:
+      return self.pair > other.pair
+    for i in range(len(self.remains)):
+      if self.remains[i] != other.remains[i]:
+        return self.remains[i] > other.remains[i]
+    return False
+
+
+class TwoPair(PokerHand):
+  def __init__(self, pairs: list[Rank], remain: Rank):
+    self.pairs: list[Rank] = sorted(pairs, reverse=True)
+    self.remain: Rank = remain
+
+  def kind(self) -> HandKind:
+    return HandKind.TWO_PAIR
+
+  def stronger_than(self, other: 'PokerHand') -> bool:
+    if other.kind() != HandKind.TWO_PAIR:
+      return self.kind().value > other.kind().value
+    for i in range(len(self.pairs)):
+      if self.pairs[i] != other.pairs[i]:
+        return self.pairs[i] > other.pairs[i]
+    if self.remain != other.remain:
+      return self.remain > other.remain
+    return False
+
+
+class ThreeCard(PokerHand):
+  def __init__(self, three_card: Rank, remains: list[Rank]):
+    self.three_card: Rank = three_card
+    self.remains: list[Rank] = sorted(remains, reverse=True)
+
+  def kind(self) -> HandKind:
+    return HandKind.THREE_CARD
+
+  def stronger_than(self, other: 'PokerHand') -> bool:
+    if other.kind() != HandKind.THREE_CARD:
+      return self.kind().value > other.kind().value
+    if self.three_card != other.three_card:
+      return self.three_card > other.three_card
+    for i in range(len(self.remains)):
+      if self.remains[i] != other.remains[i]:
+        return self.remains[i] > other.remains[i]
+    return False
+
+
+class Straight(PokerHand):
+  def __init__(self, top: Rank):
+    self.top: Rank = top
+
+  def kind(self) -> HandKind:
+    return HandKind.STRAIGHT
+
+  def stronger_than(self, other: 'PokerHand') -> bool:
+    if other.kind() != HandKind.STRAIGHT:
+      return self.kind().value > other.kind().value
+    return self.top > other.top
+
+
+class Flush(PokerHand):
+  def __init__(self, ranks: list[Rank]):
+    self.ranks: list[Rank] = sorted(ranks, reverse=True)
+
+  def kind(self) -> HandKind:
+    return HandKind.FLUSH
+
+  def stronger_than(self, other: 'PokerHand') -> bool:
+    if other.kind() != HandKind.FLUSH:
+      return self.kind().value > other.kind().value
+    for i in range(len(self.ranks)):
+      if self.ranks[i] != other.ranks[i]:
+        return self.ranks[i] > other.ranks[i]
+    return False
+
+
+class FullHouse(PokerHand):
+  def __init__(self, three_card: Rank, pair: Rank):
+    self.three_card: Rank = three_card
+    self.pair: Rank = pair
+
+  def kind(self) -> HandKind:
+    return HandKind.FULL_HOUSE
+
+  def stronger_than(self, other: 'PokerHand') -> bool:
+    if other.kind() != HandKind.FULL_HOUSE:
+      return self.kind().value > other.kind().value
+    if self.three_card != other.three_card:
+      return self.three_card > other.three_card
+    if self.pair != other.pair:
+      return self.pair > other.pair
+    return False
+
+
+class FourCard(PokerHand):
+  def __init__(self, four_card: Rank, remain: Rank):
+    self.four_card: Rank = four_card
+    self.remain: Rank = remain
+
+  def kind(self) -> HandKind:
+    return HandKind.FOUR_CARD
+
+  def stronger_than(self, other: 'PokerHand') -> bool:
+    if other.kind() != HandKind.FOUR_CARD:
+      return self.kind().value > other.kind().value
+    if self.four_card != other.four_card:
+      return self.four_card > other.four_card
+    if self.remain != other.remain:
+      return self.remain > other.remain
+    return False
+
+
+class StraightFlush(PokerHand):
+  def __init__(self, top: Rank):
+    self.top: Rank = top
+
+  def kind(self) -> HandKind:
+    return HandKind.STRAIGHT_FLUSH
+
+  def stronger_than(self, other: 'PokerHand') -> bool:
+    if other.kind() != HandKind.STRAIGHT_FLUSH:
+      return self.kind().value > other.kind().value
+    return self.top > other.top
+
+
 class Cards:
   def __init__(self, cards: list[Card]):
     # Sort by rank to make it easier to determine the type of hand
@@ -116,43 +275,15 @@ class Cards:
     return Cards(list(map(Card.from_str, txt.split(' '))))
 
   def hand(self) -> PokerHand:
-    if self.__is_straight_flush():
-      return PokerHand.STRAIGHT_FLUSH
-    if self.__is_four_card():
-      return PokerHand.FOUR_CARD
-    if self.__is_full_house():
-      return PokerHand.FULL_HOUSE
-    if self.__is_flush():
-      return PokerHand.FLUSH
-    if self.__is_straight():
-      return PokerHand.STRAIGHT
-    if self.__is_three_card():
-      return PokerHand.THREE_CARD
-    if self.__is_two_pair():
-      return PokerHand.TWO_PAIR
-    if self.__is_one_pair():
-      return PokerHand.ONE_PAIR
-    return PokerHand.HIGH_CARD
-
-  def stronger_than(self, other: 'Cards') -> bool:
-    self_hand = self.hand()
-    other_hand = other.hand()
-    if self_hand.value != other_hand.value:
-      return self_hand.value > other_hand.value
-    if self_hand == PokerHand.HIGH_CARD:
-      return self.__strong_high_card(other)
-    if self_hand == PokerHand.ONE_PAIR or self_hand == PokerHand.TWO_PAIR:
-      return self.__strong_pair(other)
-    if self_hand == PokerHand.THREE_CARD or self_hand == PokerHand.FOUR_CARD:
-      return self.__strong_a_kind(other)
-    if self_hand == PokerHand.STRAIGHT:
-      return self.__strong_straight(other)
-    if self_hand == PokerHand.FLUSH:
-      return self.__strong_flush(other)
-    if self_hand == PokerHand.FULL_HOUSE:
-      return self.__strong_full_house(other)
-    if self_hand == PokerHand.STRAIGHT_FLUSH:
-      return self.__strong_straight_flush(other)
+    return self.__straight_flush() \
+        or self.__four_card() \
+        or self.__full_house() \
+        or self.__flush() \
+        or self.__straight() \
+        or self.__three_card() \
+        or self.__two_pair() \
+        or self.__one_pair() \
+        or HighCard(self.ranks())
 
   # Determine the number of cards of a same rank. ex: {'2': 3, 'A': 2}
   def __counts(self) -> dict[str, int]:
@@ -176,106 +307,76 @@ class Cards:
         max_count = (Rank[rank_name], count)
     return max_count
 
-  def __is_one_pair(self) -> bool:
-    return len(self.__pairs()) == 1
+  def __one_pair(self) -> OnePair | None:
+    pairs = self.__pairs()
+    if len(pairs) != 1:
+      return None
+    remains = [card.rank for card in self.sorted if card.rank != pairs[0]]
+    return OnePair(pairs[0], remains)
 
-  def __is_two_pair(self) -> bool:
-    return len(self.__pairs()) == 2
+  def __two_pair(self) -> TwoPair | None:
+    pairs = self.__pairs()
+    if len(pairs) != 2:
+      return None
+    remains = [card.rank for card in self.sorted if card.rank not in pairs]
+    return TwoPair(pairs, remains[0])
 
-  def __is_three_card(self) -> bool:
-    return self.__a_kind_count()[1] == 3
+  def __three_card(self) -> ThreeCard | None:
+    three_card, count = self.__a_kind_count()
+    if count != 3:
+      return None
+    remains = [card.rank for card in self.sorted if card.rank != three_card]
+    return ThreeCard(three_card, remains)
 
-  def __is_straight(self) -> bool:
+  def __straight(self) -> Straight | None:
     if list(map(lambda card: card.rank.value, self.sorted)) == ['2', '3', '4', '5', 'A']:
-      return True
-    start = list(Rank).index(self.sorted[0].rank)
-    if start + self.size() > len(Rank):
-      return False
-    return all(self.sorted[i].rank == list(Rank)[start + i] for i in range(self.size()))
+      return Straight(Rank.FIVE)
+    top = list(Rank).index(self.sorted[-1].rank)
+    if top < self.size() - 1:
+      return None
+    if all(self.sorted[self.size() - 1 - i].rank == list(Rank)[top - i] for i in range(self.size())):
+      return Straight(self.sorted[-1].rank)
+    return None
 
-  def __is_flush(self) -> bool:
-    return all(self.sorted[i].suit == self.sorted[0].suit for i in range(self.size()))
+  def __flush(self) -> Flush | None:
+    if all(self.sorted[i].suit == self.sorted[0].suit for i in range(self.size())):
+      return Flush(self.ranks())
+    return None
 
-  def __is_full_house(self) -> bool:
-    return self.__is_one_pair() and self.__is_three_card()
+  def __full_house(self) -> FullHouse | None:
+    three_card, count = self.__a_kind_count()
+    if count != 3:
+      return None
+    pairs = self.__pairs()
+    if len(pairs) != 1:
+      return None
+    return FullHouse(three_card, pairs[0])
 
-  def __is_four_card(self) -> bool:
-    return self.__a_kind_count()[1] == 4
+  def __four_card(self) -> FourCard | None:
+    four_card, count = self.__a_kind_count()
+    if count != 4:
+      return None
+    remains = [card.rank for card in self.sorted if card.rank != four_card]
+    return FourCard(four_card, remains[0])
 
-  def __is_straight_flush(self) -> bool:
-    return self.__is_straight() and self.__is_flush()
-
-  def __strong_high_card(self, other: 'Cards') -> bool:
-    for i in reversed(range(self.size())):
-      if self.sorted[i].rank != other.sorted[i].rank:
-        return self.sorted[i].rank > other.sorted[i].rank
-    return False
-
-  def __strong_pair(self, other: 'Cards') -> bool:
-    self_pair = self.__pairs()
-    other_pair = other.__pairs()
-    if len(self_pair) != len(other_pair):
-      return len(self_pair) > len(other_pair)
-    for i in reversed(range(len(self_pair))):
-      if self_pair[i] != other_pair[i]:
-        return self_pair[i] > other_pair[i]
-
-    # Compare the remaining cards
-    self_remaining = list(filter(lambda card: card.rank not in self_pair, self.sorted))
-    other_remaining = list(filter(lambda card: card.rank not in other_pair, other.sorted))
-    for i in reversed(range(len(self_remaining))):
-      if self_remaining[i].rank != other_remaining[i].rank:
-        return self_remaining[i].rank > other_remaining[i].rank
-    return False
-
-  def __strong_a_kind(self, other: 'Cards') -> bool:
-    self_card = self.__a_kind_count()
-    other_card = other.__a_kind_count()
-    if self_card[1] != other_card[1]:
-      return self_card[1] > other_card[1]
-    if self_card[0] != other_card[0]:
-      return self_card[0] > other_card[0]
-
-    # Compare the remaining cards
-    self_remaining = list(filter(lambda card: card.rank != self_card[0], self.sorted))
-    other_remaining = list(filter(lambda card: card.rank != other_card[0], other.sorted))
-    for i in reversed(range(len(self_remaining))):
-      if self_remaining[i].rank != other_remaining[i].rank:
-        return self_remaining[i].rank > other_remaining[i].rank
-
-  def __strong_straight(self, other: 'Cards') -> bool:
-    if list(map(lambda card: card.rank.value, self.sorted)) == ['2', '3', '4', '5', 'A']:
-      return False
-    if list(map(lambda card: card.rank.value, other.sorted)) == ['2', '3', '4', '5', 'A']:
-      return True
-    return self.sorted[-1].rank > other.sorted[-1].rank
-
-  def __strong_flush(self, other: 'Cards') -> bool:
-    for i in reversed(range(self.size())):
-      if self.sorted[i].rank != other.sorted[i].rank:
-        return self.sorted[i].rank > other.sorted[i].rank
-    return False
-
-  def __strong_full_house(self, other: 'Cards') -> bool:
-    self_three_card = self.__a_kind_count()
-    other_three_card = other.__a_kind_count()
-    if self_three_card[0] != other_three_card[0]:
-      return self_three_card[0] > other_three_card[0]
-    self_pair = self.__pairs()[0]
-    other_pair = other.__pairs()[0]
-    return self_pair > other_pair
-
-  def __strong_straight_flush(self, other: 'Cards') -> bool:
-    return self.__strong_straight(other)
+  def __straight_flush(self) -> StraightFlush | None:
+    straight = self.__straight()
+    if straight and self.__flush():
+      return StraightFlush(straight.top)
+    return None
 
 
 class Player:
   def __init__(self, cards: Cards):
     self.original = cards
+    self.__hand = cards.hand()
+
+  def hand(self):
+    return self.__hand
 
   def is_best(self, others: list['Player']) -> bool:
     for other in others:
-      if not self.original.stronger_than(other.original):
+      if not self.hand().stronger_than(other.hand()):
         return False
     return True
 
@@ -310,7 +411,7 @@ class Player:
 
   def __is_best(self, current: Cards, others: list['Player']) -> bool:
     for other in others:
-      if not current.stronger_than(other.original):
+      if not current.hand().stronger_than(other.hand()):
         return False
     return True
 
