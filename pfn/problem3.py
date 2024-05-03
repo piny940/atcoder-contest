@@ -324,7 +324,7 @@ def main(lines: list[str]):
     others.append(Player(cards))
   k = int(lines[PLAYER_COUNT])
   max_win_rate, best_ways = me.max_win_rate(others, k)
-  print(max_win_rate)
+  print(round(max_win_rate, 12))
   ways_str = []
   for way in best_ways:
     str_cards = lines[0].split(' ')
