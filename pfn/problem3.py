@@ -102,13 +102,14 @@ ALL_CARDS = [Card(suit, rank) for suit in Suit for rank in Rank]
 class Cards:
   def __init__(self, cards: list[Card]):
     # Sort by rank to make it easier to determine the type of hand
-    self.cards: list[Card] = sorted(cards, key=lambda card: card.rank)
+    self.sorted: list[Card] = sorted(cards, key=lambda card: card.rank)
+    self.cards: list[Card] = [*cards]
 
   def size(self) -> int:
     return len(self.cards)
 
   def ranks(self) -> list[Rank]:
-    return list(map(lambda card: card.rank, self.cards))
+    return list(map(lambda card: card.rank, self.sorted))
 
   @classmethod
   def from_str(cls, txt: str) -> 'Cards':
@@ -185,15 +186,15 @@ class Cards:
     return self.__a_kind_count()[1] == 3
 
   def __is_straight(self) -> bool:
-    if list(map(lambda card: card.rank.value, self.cards)) == ['2', '3', '4', '5', 'A']:
+    if list(map(lambda card: card.rank.value, self.sorted)) == ['2', '3', '4', '5', 'A']:
       return True
-    start = list(Rank).index(self.cards[0].rank)
+    start = list(Rank).index(self.sorted[0].rank)
     if start + self.size() > len(Rank):
       return False
-    return all(self.cards[i].rank == list(Rank)[start + i] for i in range(self.size()))
+    return all(self.sorted[i].rank == list(Rank)[start + i] for i in range(self.size()))
 
   def __is_flush(self) -> bool:
-    return all(self.cards[i].suit == self.cards[0].suit for i in range(self.size()))
+    return all(self.sorted[i].suit == self.sorted[0].suit for i in range(self.size()))
 
   def __is_full_house(self) -> bool:
     return self.__is_one_pair() and self.__is_three_card()
@@ -206,8 +207,8 @@ class Cards:
 
   def __strong_high_card(self, other: 'Cards') -> bool:
     for i in reversed(range(self.size())):
-      if self.cards[i].rank != other.cards[i].rank:
-        return self.cards[i].rank > other.cards[i].rank
+      if self.sorted[i].rank != other.sorted[i].rank:
+        return self.sorted[i].rank > other.sorted[i].rank
     return False
 
   def __strong_pair(self, other: 'Cards') -> bool:
@@ -220,8 +221,8 @@ class Cards:
         return self_pair[i] > other_pair[i]
 
     # Compare the remaining cards
-    self_remaining = list(filter(lambda card: card.rank not in self_pair, self.cards))
-    other_remaining = list(filter(lambda card: card.rank not in other_pair, other.cards))
+    self_remaining = list(filter(lambda card: card.rank not in self_pair, self.sorted))
+    other_remaining = list(filter(lambda card: card.rank not in other_pair, other.sorted))
     for i in reversed(range(len(self_remaining))):
       if self_remaining[i].rank != other_remaining[i].rank:
         return self_remaining[i].rank > other_remaining[i].rank
@@ -236,23 +237,23 @@ class Cards:
       return self_card[0] > other_card[0]
 
     # Compare the remaining cards
-    self_remaining = list(filter(lambda card: card.rank != self_card[0], self.cards))
-    other_remaining = list(filter(lambda card: card.rank != other_card[0], other.cards))
+    self_remaining = list(filter(lambda card: card.rank != self_card[0], self.sorted))
+    other_remaining = list(filter(lambda card: card.rank != other_card[0], other.sorted))
     for i in reversed(range(len(self_remaining))):
       if self_remaining[i].rank != other_remaining[i].rank:
         return self_remaining[i].rank > other_remaining[i].rank
 
   def __strong_straight(self, other: 'Cards') -> bool:
-    if list(map(lambda card: card.rank.value, self.cards)) == ['2', '3', '4', '5', 'A']:
+    if list(map(lambda card: card.rank.value, self.sorted)) == ['2', '3', '4', '5', 'A']:
       return False
-    if list(map(lambda card: card.rank.value, other.cards)) == ['2', '3', '4', '5', 'A']:
+    if list(map(lambda card: card.rank.value, other.sorted)) == ['2', '3', '4', '5', 'A']:
       return True
-    return self.cards[-1].rank > other.cards[-1].rank
+    return self.sorted[-1].rank > other.sorted[-1].rank
 
   def __strong_flush(self, other: 'Cards') -> bool:
     for i in reversed(range(self.size())):
-      if self.cards[i].rank != other.cards[i].rank:
-        return self.cards[i].rank > other.cards[i].rank
+      if self.sorted[i].rank != other.sorted[i].rank:
+        return self.sorted[i].rank > other.sorted[i].rank
     return False
 
   def __strong_full_house(self, other: 'Cards') -> bool:
@@ -324,11 +325,13 @@ def main(lines: list[str]):
   k = int(lines[PLAYER_COUNT])
   max_win_rate, best_ways = me.max_win_rate(others, k)
   print(max_win_rate)
+  ways_str = []
   for way in best_ways:
     str_cards = lines[0].split(' ')
     for to_change in way:
       str_cards[to_change] = '**'
-    print(' '.join(str_cards))
+    ways_str.append(' '.join(str_cards))
+  print('\n'.join(sorted(ways_str)))
 
 
 if __name__ == '__main__':
