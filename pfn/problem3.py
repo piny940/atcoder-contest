@@ -2,6 +2,7 @@ import sys
 from enum import Enum
 from typing import Literal
 from itertools import combinations
+import time
 
 
 class PokerHand(Enum):
@@ -133,38 +134,45 @@ class Cards:
     return PokerHand.HIGH_CARD
 
   def stronger_than(self, other: 'Cards') -> bool:
-    if self.hand().value != other.hand().value:
-      return self.hand().value > other.hand().value
-    if self.hand() == PokerHand.HIGH_CARD:
+    self_hand = self.hand()
+    other_hand = other.hand()
+    if self_hand.value != other_hand.value:
+      return self_hand.value > other_hand.value
+    if self_hand == PokerHand.HIGH_CARD:
       return self.__strong_high_card(other)
-    if self.hand() == PokerHand.ONE_PAIR or self.hand() == PokerHand.TWO_PAIR:
+    if self_hand == PokerHand.ONE_PAIR or self_hand == PokerHand.TWO_PAIR:
       return self.__strong_pair(other)
-    if self.hand() == PokerHand.THREE_CARD or self.hand() == PokerHand.FOUR_CARD:
+    if self_hand == PokerHand.THREE_CARD or self_hand == PokerHand.FOUR_CARD:
       return self.__strong_a_kind(other)
-    if self.hand() == PokerHand.STRAIGHT:
+    if self_hand == PokerHand.STRAIGHT:
       return self.__strong_straight(other)
-    if self.hand() == PokerHand.FLUSH:
+    if self_hand == PokerHand.FLUSH:
       return self.__strong_flush(other)
-    if self.hand() == PokerHand.FULL_HOUSE:
+    if self_hand == PokerHand.FULL_HOUSE:
       return self.__strong_full_house(other)
-    if self.hand() == PokerHand.STRAIGHT_FLUSH:
+    if self_hand == PokerHand.STRAIGHT_FLUSH:
       return self.__strong_straight_flush(other)
+
+  # Determine the number of cards of a same rank. ex: {'2': 3, 'A': 2}
+  def __counts(self) -> dict[str, int]:
+    counts = {}
+    for rank in self.ranks():
+      counts[rank.name] = counts.get(rank.name, 0) + 1
+    return counts
 
   # Determine the ranks of the pairs. ex: ['2', 'A']
   def __pairs(self) -> list[Rank]:
-    pairs: list[Rank] = []
-    for rank in self.ranks():
-      if self.ranks().count(rank) == 2 and rank not in pairs:
-        pairs.append(rank)
+    counts = self.__counts()
+    pairs = [Rank[rank_name] for rank_name, count in counts.items() if count == 2]
     return pairs
 
   # Determine the number of cards of a same rank. ex: ('2', 3)
   def __a_kind_count(self) -> tuple[None, Literal[0]] | tuple[Rank, int]:
     max_count = (None, 0)
-    for rank in map(lambda card: card.rank, self.cards):
-      count = self.ranks().count(rank)
+    counts = self.__counts()
+    for rank_name, count in counts.items():
       if count > max_count[1]:
-        max_count = (rank, count)
+        max_count = (Rank[rank_name], count)
     return max_count
 
   def __is_one_pair(self) -> bool:
@@ -277,7 +285,6 @@ class Player:
       used_cards += player.original.cards
     deck_cards = [card for card in ALL_CARDS if card not in used_cards]
     all_combinations = list(combinations(deck_cards, len(to_change_idxs)))
-    print(len(all_combinations))
     if len(all_combinations) == 0:
       return 1 if self.is_best(others) else 0
     win_count = 0

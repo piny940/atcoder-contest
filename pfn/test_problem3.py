@@ -1,3 +1,4 @@
+import time
 from problem3 import *
 
 
