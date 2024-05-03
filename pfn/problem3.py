@@ -172,7 +172,7 @@ class Cards:
     return self.__is_straight() and self.__is_flush()
 
   def __strong_high_card(self, other: 'Cards') -> bool:
-    for i in range(0, self.size(), -1):
+    for i in reversed(range(self.size())):
       if self.cards[i].rank != other.cards[i].rank:
         return self.cards[i].rank > other.cards[i].rank
     return False
@@ -182,16 +182,17 @@ class Cards:
     other_pair = other.__pairs()
     if len(self_pair) != len(other_pair):
       return len(self_pair) > len(other_pair)
-    for i in range(0, len(self_pair), -1):
+    for i in reversed(range(len(self_pair))):
       if self_pair[i] != other_pair[i]:
         return self_pair[i] > other_pair[i]
 
     # Compare the remaining cards
     self_remaining = list(filter(lambda card: card.rank not in self_pair, self.cards))
     other_remaining = list(filter(lambda card: card.rank not in other_pair, other.cards))
-    for i in range(0, len(self_remaining), -1):
+    for i in reversed(range(len(self_remaining))):
       if self_remaining[i].rank != other_remaining[i].rank:
         return self_remaining[i].rank > other_remaining[i].rank
+    return False
 
   def __strong_a_kind(self, other: 'Cards') -> bool:
     self_card = self.__a_kind_count()
@@ -204,7 +205,7 @@ class Cards:
     # Compare the remaining cards
     self_remaining = list(filter(lambda card: card.rank != self_card[0], self.cards))
     other_remaining = list(filter(lambda card: card.rank != other_card[0], other.cards))
-    for i in range(0, len(self_remaining), -1):
+    for i in reversed(range(len(self_remaining))):
       if self_remaining[i].rank != other_remaining[i].rank:
         return self_remaining[i].rank > other_remaining[i].rank
 
@@ -216,7 +217,7 @@ class Cards:
     return self.cards[-1].rank > other.cards[-1].rank
 
   def __strong_flush(self, other: 'Cards') -> bool:
-    for i in range(0, self.size(), -1):
+    for i in reversed(range(self.size())):
       if self.cards[i].rank != other.cards[i].rank:
         return self.cards[i].rank > other.cards[i].rank
     return False
@@ -227,7 +228,7 @@ class Cards:
     if self_three_card[0] != other_three_card[0]:
       return self_three_card[0] > other_three_card[0]
     self_pair = self.__pairs()[0]
-    other_pair = self.__pairs()[0]
+    other_pair = other.__pairs()[0]
     return self_pair > other_pair
 
   def __strong_straight_flush(self, other: 'Cards') -> bool:
