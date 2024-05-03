@@ -3,6 +3,7 @@ from enum import Enum
 from typing import Literal
 from itertools import combinations
 import abc
+import time
 
 
 class Suit(Enum):
@@ -275,15 +276,17 @@ class Cards:
     return Cards(list(map(Card.from_str, txt.split(' '))))
 
   def hand(self) -> PokerHand:
-    return self.__straight_flush() \
-        or self.__four_card() \
-        or self.__full_house() \
-        or self.__flush() \
-        or self.__straight() \
-        or self.__three_card() \
-        or self.__two_pair() \
-        or self.__one_pair() \
-        or HighCard(self.ranks())
+    one_pair = self.__one_pair()
+    three_card = self.__three_card()
+    straight = self.__straight()
+    flush = self.__flush()
+    if not one_pair and not three_card and not flush and not straight:
+      return HighCard(self.ranks())
+    if straight and flush:
+      return StraightFlush(straight.top)
+    if three_card:
+      return self.__four_card() or self.__full_house() or three_card
+    return flush or straight or self.__two_pair() or one_pair
 
   # Determine the number of cards of a same rank. ex: {'2': 3, 'A': 2}
   def __counts(self) -> dict[str, int]:
@@ -308,22 +311,22 @@ class Cards:
     return max_count
 
   def __one_pair(self) -> OnePair | None:
-    pairs = self.__pairs()
-    if len(pairs) != 1:
+    pairs = self.__pairs()[:1]
+    if len(pairs) < 1:
       return None
     remains = [card.rank for card in self.sorted if card.rank != pairs[0]]
     return OnePair(pairs[0], remains)
 
   def __two_pair(self) -> TwoPair | None:
-    pairs = self.__pairs()
-    if len(pairs) != 2:
+    pairs = self.__pairs()[:2]
+    if len(pairs) < 2:
       return None
     remains = [card.rank for card in self.sorted if card.rank not in pairs]
     return TwoPair(pairs, remains[0])
 
   def __three_card(self) -> ThreeCard | None:
     three_card, count = self.__a_kind_count()
-    if count != 3:
+    if count < 3:
       return None
     remains = [card.rank for card in self.sorted if card.rank != three_card]
     return ThreeCard(three_card, remains)
@@ -354,16 +357,10 @@ class Cards:
 
   def __four_card(self) -> FourCard | None:
     four_card, count = self.__a_kind_count()
-    if count != 4:
+    if count < 4:
       return None
     remains = [card.rank for card in self.sorted if card.rank != four_card]
     return FourCard(four_card, remains[0])
-
-  def __straight_flush(self) -> StraightFlush | None:
-    straight = self.__straight()
-    if straight and self.__flush():
-      return StraightFlush(straight.top)
-    return None
 
 
 class Player:
@@ -374,7 +371,7 @@ class Player:
   def hand(self):
     return self.__hand
 
-  def is_best(self, others: list['Player']) -> bool:
+  def is_winner(self, others: list['Player']) -> bool:
     for other in others:
       if not self.hand().stronger_than(other.hand()):
         return False
@@ -388,11 +385,11 @@ class Player:
     deck_cards = [card for card in ALL_CARDS if card not in used_cards]
     all_combinations = list(combinations(deck_cards, len(to_change_idxs)))
     if len(all_combinations) == 0:
-      return 1 if self.is_best(others) else 0
+      return 1 if self.is_winner(others) else 0
     win_count = 0
     for picked in all_combinations:
       current = Cards(remains + list(picked))
-      if self.__is_best(current, others):
+      if self.__is_winner(current, others):
         win_count += 1
     return win_count / len(all_combinations)
 
@@ -409,9 +406,10 @@ class Player:
           best_ways.append(list(to_change_idxs))
     return max_win_rate, best_ways
 
-  def __is_best(self, current: Cards, others: list['Player']) -> bool:
+  def __is_winner(self, current: Cards, others: list['Player']) -> bool:
+    hand = current.hand()
     for other in others:
-      if not current.hand().stronger_than(other.hand()):
+      if not hand.stronger_than(other.hand()):
         return False
     return True
 
