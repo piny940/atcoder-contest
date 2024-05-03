@@ -37,7 +37,7 @@ def test_strong_high_card():
   assert c2.hand() == PokerHand.HIGH_CARD
 
 
-def test_one_pair():
+def test_one_pair1():
   c1 = Cards([
       Card(Suit.HEART, Rank.ACE),
       Card(Suit.CLUB, Rank.KING),
@@ -190,7 +190,7 @@ def test_three_card():
       Card(Suit.HEART, Rank.ACE),
       Card(Suit.DIAMOND, Rank.KING),
       Card(Suit.CLUB, Rank.ACE),
-      Card(Suit.HEART, Rank.TEN),
+      Card(Suit.HEART, Rank.QUEEN),
       Card(Suit.SPADE, Rank.ACE),
   ])
   assert c1.hand() == PokerHand.THREE_CARD

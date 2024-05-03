@@ -1,6 +1,7 @@
 import sys
 from enum import Enum
 from typing import Literal
+from itertools import combinations
 
 
 class PokerHand(Enum):
@@ -78,6 +79,24 @@ class Card:
     self.suit = suit
     self.rank = rank
 
+  def __eq__(self, other: 'Card'):
+    return self.suit == other.suit and self.rank == other.rank
+
+  @classmethod
+  def from_str(cls, txt: str) -> 'Card':
+    for s in Suit:
+      if s.value == txt[0]:
+        suit = s
+    for r in Rank:
+      if r.value == txt[1]:
+        rank = r
+    if suit is None or rank is None:
+      raise ValueError('Invalid card')
+    return Card(suit, rank)
+
+
+ALL_CARDS = [Card(suit, rank) for suit in Suit for rank in Rank]
+
 
 class Cards:
   def __init__(self, cards: list[Card]):
@@ -89,6 +108,10 @@ class Cards:
 
   def ranks(self) -> list[Rank]:
     return list(map(lambda card: card.rank, self.cards))
+
+  @classmethod
+  def from_str(cls, txt: str) -> 'Cards':
+    return Cards(list(map(Card.from_str, txt.split(' '))))
 
   def hand(self) -> PokerHand:
     if self.__is_straight_flush():
@@ -127,7 +150,7 @@ class Cards:
     if self.hand() == PokerHand.STRAIGHT_FLUSH:
       return self.__strong_straight_flush(other)
 
-  # Determine the ranks of the pairs. ex) ['2', 'A']
+  # Determine the ranks of the pairs. ex: ['2', 'A']
   def __pairs(self) -> list[Rank]:
     pairs: list[Rank] = []
     for rank in self.ranks():
@@ -135,7 +158,7 @@ class Cards:
         pairs.append(rank)
     return pairs
 
-  # Determine the number of cards of a same rank. ex) ('2', 3)
+  # Determine the number of cards of a same rank. ex: ('2', 3)
   def __a_kind_count(self) -> tuple[None, Literal[0]] | tuple[Rank, int]:
     max_count = (None, 0)
     for rank in map(lambda card: card.rank, self.cards):
@@ -157,6 +180,8 @@ class Cards:
     if list(map(lambda card: card.rank.value, self.cards)) == ['2', '3', '4', '5', 'A']:
       return True
     start = list(Rank).index(self.cards[0].rank)
+    if start + self.size() > len(Rank):
+      return False
     return all(self.cards[i].rank == list(Rank)[start + i] for i in range(self.size()))
 
   def __is_flush(self) -> bool:
@@ -237,47 +262,66 @@ class Cards:
 
 class Player:
   def __init__(self, cards: Cards):
-    self.cards = cards
+    self.original = cards
 
-  def is_winner(self, others: list['Player']) -> bool:
+  def is_best(self, others: list['Player']) -> bool:
     for other in others:
-      if not self.cards.stronger_than(other.cards):
+      if not self.original.stronger_than(other.original):
+        return False
+    return True
+
+  def win_rate(self, others: list['Player'], to_change_idxs: list[int]) -> float:
+    remains = [card for i, card in enumerate(self.original.cards) if i not in to_change_idxs]
+    used_cards = [*self.original.cards]
+    for player in others:
+      used_cards += player.original.cards
+    deck_cards = [card for card in ALL_CARDS if card not in used_cards]
+    all_combinations = list(combinations(deck_cards, len(to_change_idxs)))
+    print(len(all_combinations))
+    if len(all_combinations) == 0:
+      return 1 if self.is_best(others) else 0
+    win_count = 0
+    for picked in all_combinations:
+      current = Cards(remains + list(picked))
+      if self.__is_best(current, others):
+        win_count += 1
+    return win_count / len(all_combinations)
+
+  def max_win_rate(self, others: list['Player'], changeable: int) -> tuple[float, list[list[int]]]:
+    max_win_rate = 0
+    best_ways = []
+    for to_change_len in range(0, changeable + 1):
+      for to_change_idxs in combinations(range(self.original.size()), to_change_len):
+        rate = self.win_rate(others, list(to_change_idxs))
+        if rate > max_win_rate:
+          max_win_rate = rate
+          best_ways = [list(to_change_idxs)]
+        elif rate == max_win_rate:
+          best_ways.append(list(to_change_idxs))
+    return max_win_rate, best_ways
+
+  def __is_best(self, current: Cards, others: list['Player']) -> bool:
+    for other in others:
+      if not current.stronger_than(other.original):
         return False
     return True
 
 
 def main(lines: list[str]):
   PLAYER_COUNT = 6
-  me = Player(line_to_cards(lines[0]))
+  me = Player(Cards.from_str(lines[0]))
   others = []
   for i in range(1, PLAYER_COUNT):
-    cards = line_to_cards(lines[i])
+    cards = Cards.from_str(lines[i])
     others.append(Player(cards))
   k = int(lines[PLAYER_COUNT])
-  if k != 0:
-    print(1)
-    return
-  if me.is_winner(others):
-    print(1)
-  else:
-    print(0)
-  print(lines[0])
-
-
-def str_to_card(txt: str) -> Card:
-  for s in Suit:
-    if s.value == txt[0]:
-      suit = s
-  for r in Rank:
-    if r.value == txt[1]:
-      rank = r
-  if suit is None or rank is None:
-    raise ValueError('Invalid card')
-  return Card(suit, rank)
-
-
-def line_to_cards(line: str) -> Cards:
-  return Cards(list(map(str_to_card, line.split(' '))))
+  max_win_rate, best_ways = me.max_win_rate(others, k)
+  print(max_win_rate)
+  for way in best_ways:
+    str_cards = lines[0].split(' ')
+    for to_change in way:
+      str_cards[to_change] = '**'
+    print(' '.join(str_cards))
 
 
 if __name__ == '__main__':
